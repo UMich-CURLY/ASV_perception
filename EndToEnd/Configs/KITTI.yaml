@@ -1,0 +1,58 @@
+# ROS bag Topics
+pc_topic: '/wamv/sensors/lidars/lidar_wamv_sensor/points'
+pose_topic: '/gt_pose'
+img_topic: '/wamv/sensors/cameras/front_left_camera_sensor/image_raw'
+publish: True
+
+
+num_classes: 9 #11
+
+# Conv BKI
+# grid_size: [64, 64, 2] #[256, 256, 2]
+# min_bound: [-25.6, -25.6, -1.5] #-1.5
+# max_bound: [25.6, 25.6, -1] #-1.1
+# voxel_sizes: [0.8, 0.8, 0.25] #[0.2, 0.2, 0.1]
+grid_size: [128, 128, 9] #[256, 256, 2]
+min_bound: [-51.2, -51.2, -1.85] #-1.5
+max_bound: [51.2, 51.2, -0.5] #-1.1
+voxel_sizes: [0.8, 0.8, 0.15] #[0.2, 0.2, 0.1]
+# grid_size: [160, 160, 9] #[256, 256, 2]
+# min_bound: [-12.8, -12.8, -1.85] #-1.5
+# max_bound: [12.8, 12.8, -0.5] #-1.1
+# voxel_sizes: [0.16, 0.16, 0.15] #[0.2, 0.2, 0.1]
+f: 5 #5
+
+# Segmentation Net
+res: 0.25 #0.2
+cr: 0.5
+
+# Segmentation weights
+seg_path: "./weights/KITTI/max-iou-test.pt"
+
+# ConvBKI weights
+model_path: "./weights/KITTI/Epoch1.pt"
+
+# rviz color
+# colors: # rgb
+#         0: [200, 275, 200]
+#         1: [255, 200, 0] # Building or tree...yellow
+#         2: [255, 120, 150] # Barrier or concrete_platform...light-pink
+#         3: [30, 60, 150] # water...dark-blue
+#         4: [255, 30, 30] # Pedestrian or redbuoy...red
+#         5: [255, 240, 150] # Pole or blackbuoy...golden-yellow
+#         6: [255, 0, 255] # Road or greenbuoy...pink
+#         7: [150, 240, 80] # Ground or orangebuoy...lightgreen
+#         8: [75, 0, 75] # Sidewalk or whitebuoy...dark-purple
+#         9: [0, 175, 0] # Vegetation or other...green
+#         10: [245, 150, 100] # Vehicle
+
+colors: # rgb
+        0: [200, 275, 200] # tree...very light green
+        1: [0, 102, 0] # grass-shore...darkgreen
+        2: [160, 160, 160] # concrete_platform...gray
+        3: [30, 60, 150] # water...dark-blue
+        4: [255, 30, 30] # redbuoy...red
+        5: [0, 0, 0] # blackbuoy...black
+        6: [150, 240, 80] # greenbuoy...lightgreen
+        7: [255, 128, 0] # orangebuoy...orange
+        8: [255, 255, 255] # whitebuoy...white
