@@ -38,7 +38,7 @@ See LIO-SAM documentation for software and hardware dependency information.
 - If using ROS1 (in which case you'll likely use ros1bridge to talk to ros2_node), use the following commands to download and compile the package.
 
 ```
-git clone -b ros2_grounded_sam2 git@github.com:spsingh37/BKI_ROS.git
+git clone -b ros2_grounded_sam2 git@github.com:UMich-CURLY/ASV_perception.git
 mv ~/BKI_ROS/lio-sam/liorf ~/catkin_ws/src
 cd ~/catkin_ws
 catkin_make
@@ -111,7 +111,7 @@ Parameters can be set in the yaml config file, and it can be found in EndtoEnd/C
 * pose_topic - the name of the pose topic to subscribe to
 * num_classes - number of semantic classes
 
-* For now, the semantic_classes, their colors, and LiDAR-camera intrinsic-extrinisics are all specified in EndtoEnd/Segmentation/utils.py
+* For now, the semantic_classes, their colors, Grounded-SAM2 inputs, and LiDAR-camera intrinsic-extrinisics are all specified in EndtoEnd/Segmentation/utils.py
 
 * grid_size, min_bound, max_bound, voxel_sizes - parameters for convbki layer
 * model_path - saved weights for convbki layer
