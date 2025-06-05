@@ -49,7 +49,7 @@ catkin_make
 ### Mapping
 - Tested on Ubuntu 22.04 (with cuda 11.8.0)
 ```
-git clone -b ros2_grounded_sam2 git@github.com:spsingh37/BKI_ROS.git
+git clone -b ros2_grounded_sam2 git@github.com:UMich-CURLY/ASV_perception.git
 cd ~/BKI_ROS/EndToEnd
 conda env create -f environment.yaml
 conda activate ros2_grounded_sam2
