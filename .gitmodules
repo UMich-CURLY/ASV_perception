@@ -1,0 +1,6 @@
+[submodule "object_SLAM"]
+	path = object_SLAM
+	url = git@github.com:UMich-CURLY/ASV-Object-SLAM.git
+[submodule "mapping/EndToEnd/torchsparse"]
+	path = mapping/EndToEnd/torchsparse
+	url = git@github.com:mit-han-lab/torchsparse.git

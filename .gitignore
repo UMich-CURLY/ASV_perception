@@ -1,0 +1,15 @@
+.vscode/
+
+build/
+log/
+install/
+
+**/__pycache__/
+*.egg-info/
+
+# large checkpoints / weights
+mapping/EndToEnd/Segmentation/gdino_checkpoints/*.pth
+mapping/EndToEnd/Segmentation/checkpoints/*.pt
+models/*.pt
+*.pth
+*.pt
