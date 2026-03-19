@@ -22,7 +22,7 @@ import struct  # Needed for proper color packing
 ## TODO: move these to params.yaml --------------------------##
 # Camera to LiDAR Transformation
 ROTATION_CAMERA_TO_LIDAR = np.array([0.0, 0.0, 0.0])  
-TRANSLATION_CAMERA_TO_LIDAR = np.array([0.0, 0.0, 0.3])  
+TRANSLATION_CAMERA_TO_LIDAR = np.array([0.0, 0.0, 0.15])  
 
 # Compute rotation matrix
 R_matrix = transforms3d.euler.euler2mat(
