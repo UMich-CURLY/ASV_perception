@@ -30,7 +30,7 @@ This branch provides a ROS2 wrapper (ROS2 Humble) with open-vocabulary semantic 
 
 ## Install
 
-### Localization (for pre-processing the poses)
+<!-- ### Localization (for pre-processing the poses)
 You can ignore the Localization instructions if you already have the pre-processed pose data in a ROS2 bag file, or if you have the ground-truth odometry published online.
 
 See LIO-SAM documentation for software and hardware dependency information.
@@ -44,12 +44,12 @@ cd ~/catkin_ws
 catkin_make
 ```
 
-- If using ROS2, use the ros2 branch of- https://github.com/TixiaoShan/LIO-SAM
+- If using ROS2, use the ros2 branch of- https://github.com/TixiaoShan/LIO-SAM -->
 
 ### Mapping
 - Tested on Ubuntu 22.04 (with cuda 11.8.0)
 ```
-git clone -b ros2_grounded_sam2 git@github.com:spsingh37/BKI_ROS.git
+git clone --recurse-submodules -b ros2_w26 git@github.com:UMich-CURLY/ASV_perception.git
 cd ~/BKI_ROS/EndToEnd
 conda env create -f environment.yaml
 conda activate ros2_grounded_sam2
@@ -63,9 +63,7 @@ bash download_ckpts.sh
 cd ..
 cd gdino_checkpoints
 bash download_ckpts.sh
-cd ../..
-git clone git@github.com:mit-han-lab/torchsparse.git
-cd torchsparse/
+cd ../../torchsparse/
 git checkout v1.4.0
 python setup.py install
 export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libtiff.so.5
@@ -75,18 +73,15 @@ export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libtiff.so.5
 
 You can run the mapping module which will create a ros2 publisher that publish the map and can be visualized on rviz2.
 
-1. Run ros2_node_pt_cloud.py:
+1. Run semantic_pcd_publisher.py:
 ```
-cd ~/BKI_ROS/EndToEnd
-python ros2_node_pt_cloud.py
+cd ~/ASV_perception/mapping/EndToEnd
+python semantic_pcd_publisher.py
 ```
-2. If you have odometry (not pose), run this:
+
+2. For publishing global map (needed for object localization; visualizing can be expensize in rviz if large map):
 ```
-python odom_to_pose.py
-```
-3. For publishing global map (needed for object localization; visualizing can be expensize in rviz if large map):
-```
-python pointcloud_publisher_global.py
+python semantic_pcd_publisher_global.py
 ```
 4. Run object localization (with Augmented reality like object position viewer):
 ```
@@ -105,13 +100,14 @@ ros2 launch vrx_gz competition.launch.py world:=sydney_regatta
 
 #### YAML Parameters
 
-Parameters can be set in the yaml config file, and it can be found in EndtoEnd/Configs/KITTI.yaml
+<!-- Parameters can be set in the yaml config file, and it can be found in EndtoEnd/Configs/KITTI.yaml -->
+Parameters can be set in the yaml config file, and it can be found in ASV_perception/configs/params.yaml
 
-* pc_topic - the name of the pointcloud topic to subscribe to
+* lidar_topic - the name of the pointcloud topic to subscribe to
 * pose_topic - the name of the pose topic to subscribe to
 * num_classes - number of semantic classes
 
-* For now, the semantic_classes, their colors, and LiDAR-camera intrinsic-extrinisics are all specified in EndtoEnd/Segmentation/utils.py
+<!-- * For now, the semantic_classes, their colors, and LiDAR-camera intrinsic-extrinisics are all specified in EndtoEnd/Segmentation/utils.py -->
 
 * grid_size, min_bound, max_bound, voxel_sizes - parameters for convbki layer
 * model_path - saved weights for convbki layer

@@ -26,21 +26,18 @@ ros_parameters:
   # global_var_topic: '/global_variance_map'
 
 
-num_classes: 10 #9, 11
+num_classes: 10 # 9, 11
 
 # Conv BKI
-# grid_size: [64, 64, 2] #[256, 256, 2]
-# min_bound: [-25.6, -25.6, -1.5] #-1.5
-# max_bound: [25.6, 25.6, -1] #-1.1
-# voxel_sizes: [0.8, 0.8, 0.25] #[0.2, 0.2, 0.1]
 grid_size: [128, 128, 9] #[256, 256, 2]
-min_bound: [-51.2, -51.2, -1.85] #-1.5
-max_bound: [51.2, 51.2, -0.5] #-1.1
+min_bound: [-51.2, -51.2, -0.85] #-1.5
+max_bound: [51.2, 51.2, 0.5] #-1.1
 voxel_sizes: [0.8, 0.8, 0.15] #[0.2, 0.2, 0.1]
-# grid_size: [160, 160, 9] #[256, 256, 2]
-# min_bound: [-12.8, -12.8, -1.85] #-1.5
-# max_bound: [12.8, 12.8, -0.5] #-1.1
-# voxel_sizes: [0.16, 0.16, 0.15] #[0.2, 0.2, 0.1]
+# grid_size: [128, 128, 9] #[256, 256, 2]
+# min_bound: [-51.2, -51.2, -1.85] #-1.5
+# max_bound: [51.2, 51.2, -0.5] #-1.1
+# voxel_sizes: [0.8, 0.8, 0.15] #[0.2, 0.2, 0.1]
+
 f: 5 #5
 publish: True    ## map publish flag
 
