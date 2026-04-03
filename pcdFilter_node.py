@@ -10,14 +10,11 @@ from rclpy.qos import qos_profile_sensor_data
 import ros2_numpy
 from sensor_msgs.msg import PointCloud2, PointField, CameraInfo
 from sensor_msgs_py import point_cloud2
-# from visualization_msgs.msg import MarkerArray
 from tf_transformations import quaternion_matrix
 import transforms3d
 
-from message_filters import Subscriber, TimeSynchronizer
 import numpy as np
 from std_msgs.msg import Header
-import struct  # Needed for proper color packing
 
 ## TODO: move these to params.yaml --------------------------##
 # Camera to LiDAR Transformation
@@ -78,7 +75,6 @@ class PcdFilterNode(Node):
         
         # Publisher
         self.filt_pcd_pub = self.create_publisher(PointCloud2, self.ros_topic["filt_pcd_topic"], 10)  # Filtered pcd Publisher
-        self.proj_pix_pub = self.create_publisher(PointCloud2, self.ros_topic["proj_pix_topic"], 10)  # Projected pixels Publisher
 
         # Worker thread
         self.running = True
@@ -133,10 +129,10 @@ class PcdFilterNode(Node):
                 continue
 
             want_filt_pcd = self.filt_pcd_pub.get_subscription_count() > 0
-            want_proj_pix = self.proj_pix_pub.get_subscription_count() > 0
 
-            if not (want_filt_pcd or want_proj_pix):
+            if not want_filt_pcd:
                 time.sleep(0.01)
+                print("No subscribers for filter pcd, skipping...")
                 continue
     
             self.cb_count += 1
@@ -165,37 +161,38 @@ class PcdFilterNode(Node):
                 self.lidar = lidar_raw[valid_lidar_indices]  # Only keep LiDAR points in the image frame
                 self.proj_pix = projected_pixels
 
-                # https://github.com/ros2/common_interfaces/blob/rolling/sensor_msgs_py/sensor_msgs_py/point_cloud2.py
-                if want_filt_pcd:   # Publish self.lidar as PointCloud2
+                if want_filt_pcd:
+                    # self.lidar contains [x, y, z, intensity] in the Camera Frame
+                    # self.proj_pix contains [u, v]
+                    # Stack them: (N, 6) -> [x, y, z, intensity, u, v]
+                    combined_data = np.hstack((
+                        self.lidar,                       # x, y, z, intensity
+                        self.proj_pix.astype(np.float32)  # u, v
+                    ))
+
+                    # PCD Fields
+                    # https://github.com/ros2/common_interfaces/blob/rolling/sensor_msgs_py/sensor_msgs_py/point_cloud2.py
                     pcd_fields = [
                         PointField(name="x", offset=0, datatype=PointField.FLOAT32, count=1),
                         PointField(name="y", offset=4, datatype=PointField.FLOAT32, count=1),
                         PointField(name="z", offset=8, datatype=PointField.FLOAT32, count=1),
-                        PointField(name="intensity", offset=12, datatype=PointField.FLOAT32, count=1)
+                        PointField(name="intensity", offset=12, datatype=PointField.FLOAT32, count=1),
+                        PointField(name="u", offset=16, datatype=PointField.FLOAT32, count=1),
+                        PointField(name="v", offset=20, datatype=PointField.FLOAT32, count=1)
                     ]
-                    header = Header()
-                    header.stamp = self.pcd_header.stamp
-                    header.frame_id = "map"
-                    filtered_pcd = point_cloud2.create_cloud(header, pcd_fields, self.lidar)
-                    # filtered_pcd = point_cloud2.create_cloud(self.pcd_header, pcd_fields, self.lidar)
-                    self.filt_pcd_pub.publish(filtered_pcd)
 
-                if want_proj_pix:
-                    # Publish projected LiDAR pixels with depth: (n, 3) -> (u, v, depth) as PointCloud2
-                    proj_pix_depth = np.hstack((self.proj_pix, cam_pts.reshape(-1, 1)))
                     header = Header()
                     header.stamp = self.pcd_header.stamp
                     header.frame_id = "map"
-                    proj_pix_pcd = point_cloud2.create_cloud_xyz32(header, proj_pix_depth)
-                    # proj_pix_pcd = point_cloud2.create_cloud_xyz32(self.pcd_header, proj_pix_depth)
-                    self.proj_pix_pub.publish(proj_pix_pcd)
+                    filtered_pcd = point_cloud2.create_cloud(header, pcd_fields, combined_data)
+                    self.filt_pcd_pub.publish(filtered_pcd)
                 
                 t1 = time.time()
                 infer_ms = (t1 - t0) * 1000.0
                 if self.cb_count % 10 == 0:
                     self.get_logger().info(
                         f"PCD process time: {infer_ms:.1f} ms | "
-                        f"filt_pcd_pub={want_filt_pcd} proj_pix_pub={want_proj_pix}"
+                        f"filt_pcd_pub={want_filt_pcd}"
                     )
             
             except Exception as e:
@@ -232,18 +229,6 @@ class PcdFilterNode(Node):
         pixels = pixels[valid_fov_indices].astype(int)
         
         return pixels, points_camera[valid_fov_indices, 2], valid_indices
-
-    # def create_pointcloud2(self, points):
-    #     """ Convert numpy array to PointCloud2 message """
-    #     # https://github.com/ros2/common_interfaces/blob/rolling/sensor_msgs_py/sensor_msgs_py/point_cloud2.py
-    #     fields = [
-    #         PointField(name="x", offset=0, datatype=PointField.FLOAT32, count=1),
-    #         PointField(name="y", offset=4, datatype=PointField.FLOAT32, count=1),
-    #         PointField(name="z", offset=8, datatype=PointField.FLOAT32, count=1),
-    #         PointField(name="rgb", offset=12, datatype=PointField.FLOAT32, count=1)  # Keep RGB as float
-    #     ]
-
-    #     return pc2.create_cloud(self.pcd_header, fields, points)
 
 
 def main(args=None):

@@ -1,3 +1,5 @@
+import os
+import yaml
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import PointCloud2, PointField
@@ -8,6 +10,16 @@ class PointCloudMerger(Node):
     def __init__(self):
         super().__init__('pointcloud_merger')
 
+        # Load model parameters
+        config_path = os.path.join(os.getcwd(), '../..', 'configs/params.yaml')
+        with open(config_path, "r") as stream:
+            try:
+                model_params = yaml.safe_load(stream)
+            except yaml.YAMLError as exc:
+                print(exc)
+
+        self.ros_topic = model_params["ros_parameters"]
+
         # Dictionary to store unique (x, y, z) -> rgb mapping
         self.global_point_cloud = {}
         self.latest_header = None  # Store the latest header
@@ -15,14 +27,13 @@ class PointCloudMerger(Node):
         # Subscribe to local point cloud topic
         self.subscription = self.create_subscription(
             PointCloud2,
-            # '/semantic_map',  # Replace with your topic name
-            '/convBKI/semantic_pcd',
+            self.ros_topic["semantic_pcd_topic"],  # Use topic from config
             self.listener_callback,
             10
         )
 
         # Publisher for the merged global point cloud
-        self.publisher = self.create_publisher(PointCloud2, '/convBKI/global_semantic_pcd', 10)
+        self.publisher = self.create_publisher(PointCloud2, self.ros_topic["global_pcd_topic"], 10)
 
     def listener_callback(self, msg):
         # Extract all fields: x, y, z, and rgb

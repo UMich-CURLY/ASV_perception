@@ -11,6 +11,7 @@ from rclpy.duration import Duration
 import ros2_numpy
 
 from sensor_msgs.msg import PointCloud2, Image, PointField
+from sensor_msgs_py import point_cloud2
 from geometry_msgs.msg import PoseStamped
 from visualization_msgs.msg import MarkerArray
 from tf_transformations import quaternion_matrix
@@ -57,14 +58,13 @@ class ConvBKIMap(Node):
 
         # Subscriber Message Filters
         self.filt_pcd_sub = Subscriber(self, PointCloud2, self.ros_topic["filt_pcd_topic"])  # Filtered LiDAR pcd
-        self.proj_pix_sub = Subscriber(self, PointCloud2, self.ros_topic["proj_pix_topic"])  # Projected pixels + depth
         self.pose_sub = Subscriber(self, PoseStamped, self.ros_topic["pose_topic"])          # Vehicle Pose
         self.mask_sub = Subscriber(self, Image, self.ros_topic["det_mask_topic"])            # Segmentation Mask
         self.annot_sub = Subscriber(self, Image, self.ros_topic["annot_topic"])              # annotated img from cam_det 
 
         # self.ts = TimeSynchronizer([self.filt_pcd_sub, self.pose_sub, self.mask_sub], 10)
         self.ts = ApproximateTimeSynchronizer(
-            [self.filt_pcd_sub, self.proj_pix_sub, self.pose_sub, self.mask_sub, self.annot_sub],
+            [self.filt_pcd_sub, self.pose_sub, self.mask_sub, self.annot_sub],
             queue_size=10,
             slop=0.05,
         )
@@ -85,7 +85,6 @@ class ConvBKIMap(Node):
         self.get_logger().info(
             "Map Publisher Node up. Subscribed to:\n"
             f"  filtered pcd topic: {self.ros_topic['filt_pcd_topic']}\n"
-            f"  projected pcd topic:: {self.ros_topic['proj_pix_topic']}\n"
             f"  pose topic: {self.ros_topic['pose_topic']}\n"
             f"  mask topic: {self.ros_topic['det_mask_topic']}"
         )
@@ -140,15 +139,12 @@ class ConvBKIMap(Node):
         # Publish global point cloud
         self.pc_pub.publish(pc2_msg)
 
-    def create_point_labels(self, proj_pix_msg, mask_msg):        
+    def create_point_labels(self, mask_msg):        
         """
         Assign per-point semantic labels to LiDAR points using 2D detections
         and segmentation masks in the camera frame.
 
         Args:
-            proj_pix_msg (sensor_msgs.msg.PointCloud2):  // projected LiDAR points
-                LiDAR points projected into pixel coordinate with (u, v, depth)
-
             mask_msg (sensor_msgs.msg.Image):            // segmentation mask
                 mask pixel 0:       background;
                           (k+1):    class index k
@@ -157,32 +153,27 @@ class ConvBKIMap(Node):
             point_labels (np.ndarray):
                 One-hot encoded labels of shape (N, num_classes) for projected LiDAR points.
         """
-        # Convert PointCloud2 message to NumPy array
-        proj_pc = ros2_numpy.point_cloud2.point_cloud2_to_array(proj_pix_msg)
-        self.projected_pixels = proj_pc['xyz'][:, :2]  # N x 2 array (u, v) pixel coordinates
         
         # Convert Image message to OpenCV format
         label_mask = self.bridge.imgmsg_to_cv2(mask_msg, desired_encoding="mono8")
         combined_mask = np.asarray(label_mask, dtype=np.uint8)
 
         # Initialize point labels (N, num_classes) → One-hot encoding
-        point_labels = np.zeros((self.projected_pixels.shape[0], self.num_classes), dtype=np.float32)
+        point_labels = np.zeros((self.proj_pix.shape[0], self.num_classes), dtype=np.float32)
 
-        for i, (u, v) in enumerate(self.projected_pixels):
+        for i, (u, v) in enumerate(self.proj_pix):
             if combined_mask[int(v), int(u)] > 0:  # Check if point falls inside any mask
                 class_idx = combined_mask[int(v), int(u)] - 1  # Subtract 1 to get correct class index
                 point_labels[i, class_idx] = 1.0
         
         return point_labels
 
-    def publish_overlay_image(self, proj_pix_msg, annot_msg):
+    def publish_overlay_image(self, annot_msg):
         annot_img = self.bridge.imgmsg_to_cv2(annot_msg, desired_encoding="bgr8")
 
-        proj_pc = ros2_numpy.point_cloud2.point_cloud2_to_array(proj_pix_msg)
-
-        u = proj_pc['xyz'][:, 0]
-        v = proj_pc['xyz'][:, 1]
-        depth = proj_pc['xyz'][:, 2]
+        u = self.proj_pix[:, 0]
+        v = self.proj_pix[:, 1]
+        depth = self.filtered_lidar[:, 2]
 
         h, w = annot_img.shape[:2]
 
@@ -204,17 +195,19 @@ class ConvBKIMap(Node):
         overlay_msg.header = annot_msg.header
         self.overlay_pub.publish(overlay_msg)
 
-    def callback(self, filt_pcd_msg, proj_pix_msg, pose_msg, mask_msg, annot_msg):
-        self.publish_overlay_image(proj_pix_msg, annot_msg)
+    def callback(self, filt_pcd_msg, pose_msg, mask_msg, annot_msg):
 
         # Convert filtered pcd2 msg to NumPy array
-        # https://github.com/nitesh-subedi/ros2_numpy/blob/humble/ros2_numpy/point_cloud2.py
-        lidar_pc = ros2_numpy.point_cloud2.point_cloud2_to_array(filt_pcd_msg)
-        self.filtered_lidar = np.hstack((lidar_pc['xyz'], lidar_pc['intensity'].reshape(-1, 1)))  # N x 4 array
+        # https://github.com/ros2/common_interfaces/blob/rolling/sensor_msgs_py/sensor_msgs_py/point_cloud2.py
+        points = point_cloud2.read_points_numpy(filt_pcd_msg, field_names=['x', 'y', 'z', 'intensity', 'u', 'v'])
+        
+        self.filtered_lidar = points[:, :4]                  # N x 4, (x, y, z, intensity)
+        self.proj_pix = points[:, 4:]                        # N x 2, (u, v)
+        self.publish_overlay_image(annot_msg)
 
         # Generate one-hot encoded labels for projected LiDAR points.
         start_time = time.time()
-        self.point_labels = self.create_point_labels(proj_pix_msg, mask_msg)
+        self.point_labels = self.create_point_labels(mask_msg)
         self.get_logger().info(f"mask processed in {time.time()-start_time:.2f} seconds.")
 
         # Extract pose from PoseStamped message
@@ -272,7 +265,7 @@ class ConvBKIMap(Node):
 
                 # Create PointCloud2 message
                 pc2_msg = PointCloud2()
-                pc2_msg.header.stamp = proj_pix_msg.header.stamp
+                pc2_msg.header.stamp = filt_pcd_msg.header.stamp
                 pc2_msg.header.frame_id = "map"  
 
                 # Define PointCloud2 fields
@@ -325,10 +318,6 @@ def main():
     rclpy.init()
     node = ConvBKIMap(
         model_params=model_params,
-        # pc_topic=model_params["ros_parameters"]["pc_topic"],
-        # pose_topic=model_params["ros_parameters"]["pose_topic"],
-        # mask_topic=model_params["ros_parameters"]["mask_topic"],  # Added Mask Topic
-        # img_topic=model_params["ros_parameters"]["img_topic"],  # Added Image Topic
         res=model_params["res"],
         e2e_net=e2e_net,
         dev=dev,
