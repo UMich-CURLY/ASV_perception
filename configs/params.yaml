@@ -1,6 +1,9 @@
 # ROS bag Topics
 ros_parameters:
   ## Sensors
+  # lidar_topic: '/rslidar_points'
+  # camera_topic: '/camera/camera/color/image_raw'
+  # caminfo_topic: '/camera/camera/color/camera_info'
   lidar_topic: '/wamv/sensors/lidars/lidar_sensor/points'
   camera_topic: '/wamv/sensors/cameras/camera_sensor/optical/image_raw'
   caminfo_topic: '/wamv/sensors/cameras/camera_sensor/camera_info'
@@ -14,12 +17,12 @@ ros_parameters:
   
   ## from pcdFilter_node.py
   filt_pcd_topic: '/lidars/filtered_pcd'      # Filtered LiDAR pcd
-  proj_pix_topic: '/lidars/proj_pixel_depth'  # Projected pixels + depth
   # det_topic: '/asv_object_slam/detection/list_raw'
 
   ## Semantic pcd and map publisher
   semantic_pcd_topic: '/convBKI/semantic_pcd'
   global_pcd_topic: '/convBKI/global_semantic_pcd'
+  ogm_topic: '/convBKI/OGM_global'
   map_topic: '/convBKI/SemMap_global'                 # not using rn
   var_topic: '/convBKI/VarMap_global'
   # global_map_topic: '/global_semantic_map'
