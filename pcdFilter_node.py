@@ -16,21 +16,8 @@ import transforms3d
 import numpy as np
 from std_msgs.msg import Header
 
-## TODO: move these to params.yaml --------------------------##
-# Camera to LiDAR Transformation
-ROTATION_CAMERA_TO_LIDAR = np.array([0.0, 0.0, 0.0])  
-TRANSLATION_CAMERA_TO_LIDAR = np.array([0.0, 0.0, 0.15])  
-
-# Compute rotation matrix
-R_matrix = transforms3d.euler.euler2mat(
-    np.radians(ROTATION_CAMERA_TO_LIDAR[0]),
-    np.radians(ROTATION_CAMERA_TO_LIDAR[1]),
-    np.radians(ROTATION_CAMERA_TO_LIDAR[2])
-)
-
-CAMERA_TO_LIDAR_TRANSFORM = np.eye(4)
-CAMERA_TO_LIDAR_TRANSFORM[:3, :3] = R_matrix
-CAMERA_TO_LIDAR_TRANSFORM[:3, 3] = TRANSLATION_CAMERA_TO_LIDAR
+from tf2_ros import Buffer, TransformListener
+from tf2_geometry_msgs import do_transform_pose_stamped
 
 Cf_TO_Cw_TRANSFORM = np.eye(4)
 Cf_TO_Cw_TRANSFORM[:3, :3] = np.array([[0, -1, 0],
@@ -53,28 +40,36 @@ class PcdFilterNode(Node):
                 print(exc)
             
         self.num_classes = self.config["num_classes"]
-        self.ros_topic = self.config["ros_parameters"]
+        self.ros_parameters = self.config["ros_parameters"]
         
-        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        # Initialize TF2 Buffer and Listener
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
+        self.camera_frame = self.ros_parameters["camera_frame"]
+        self.lidar_frame = self.ros_parameters["lidar_frame"]
 
         # Subscriber
         self.pcd_sub = self.create_subscription(
             PointCloud2,
-            self.ros_topic["lidar_topic"],
+            self.ros_parameters["lidar_topic"],
             self.pcd_callback,
             qos_profile_sensor_data
         )
         # Camera intrinsics / Subscriber for Camera Info
-        self.caminfo_ready = False
+        self.CAMERA_INTRINSICS = None
         self.caminfo_sub = self.create_subscription(
             CameraInfo, 
-            self.ros_topic["caminfo_topic"], 
+            self.ros_parameters["caminfo_topic"], 
             self.caminfo_callback, 
             qos_profile_sensor_data
         )
-        
+
+        # LiDAR to Camera extrinsics
+        self.CAMERA_TO_LIDAR_TRANSFORM = None
+        self.lookup_timer = self.create_timer(1.0, self.get_static_extrinsics)
+
         # Publisher
-        self.filt_pcd_pub = self.create_publisher(PointCloud2, self.ros_topic["filt_pcd_topic"], 10)  # Filtered pcd Publisher
+        self.filt_pcd_pub = self.create_publisher(PointCloud2, self.ros_parameters["filt_pcd_topic"], 10)  # Filtered pcd Publisher
 
         # Worker thread
         self.running = True
@@ -89,18 +84,44 @@ class PcdFilterNode(Node):
 
     # Camera Intrinsics Callback
     def caminfo_callback(self, msg: CameraInfo):
-        if self.caminfo_ready:                  ## only run once
+        if self.CAMERA_INTRINSICS is not None:           ## only run once
             return
         self.fx, self.fy = msg.k[0], msg.k[4]
         self.cx, self.cy = msg.k[2], msg.k[5]
         self.img_w, self.img_h = msg.width, msg.height
         self.camera_header = msg.header
-        self.caminfo_ready = True
         self.CAMERA_INTRINSICS = np.array([[self.fx, 0.0, self.cx],
                                            [0.0, self.fy, self.cy],
                                            [0.0, 0.0, 1.0]])
         # self.get_logger().info(f"Camera intrinsics: fx={self.fx}, fy={self.fy}, cx={self.cx}, cy={self.cy}, w={self.img_w}, h={self.img_h}")
         # x=762.7223205566406, fy=762.7223110198975, cx=640.0, cy=360.0, w=1280, h=720
+
+    def get_static_extrinsics(self):
+            """This runs every second UNTIL it finds the transform."""
+            try:
+                # We look for the transform. Timeout is short because the timer repeats.
+                trans = self.tf_buffer.lookup_transform(
+                    self.camera_frame,
+                    self.lidar_frame,
+                    rclpy.time.Time(),
+                    timeout=rclpy.duration.Duration(seconds=0.1)
+                )
+                
+                # If we get here, it worked. Map the matrix.
+                t = trans.transform.translation
+                r = trans.transform.rotation
+                m = transforms3d.quaternions.quat2mat([r.w, r.x, r.y, r.z])
+                
+                self.CAMERA_TO_LIDAR_TRANSFORM = np.eye(4)
+                self.CAMERA_TO_LIDAR_TRANSFORM[:3, :3] = m
+                self.CAMERA_TO_LIDAR_TRANSFORM[:3, 3] = [t.x, t.y, t.z]
+                
+                self.get_logger().info(f"Extrinsics: {self.CAMERA_TO_LIDAR_TRANSFORM}")
+                self.lookup_timer.cancel()      # run once, kill the timer.
+
+            except Exception:
+                self.get_logger().warn("Still waiting for TF frames to appear in buffer...")
+        
 
     # LiDAR PointCloud Callback
     def pcd_callback(self, msg: PointCloud2):
@@ -124,7 +145,7 @@ class PcdFilterNode(Node):
     def worker_loop(self):
         self.get_logger().info("PCD Filter Worker Thread Started")
         while rclpy.ok() and self.running:
-            if not self.caminfo_ready:
+            if self.CAMERA_INTRINSICS is None or self.CAMERA_TO_LIDAR_TRANSFORM is None:
                 time.sleep(0.1)
                 continue
 
@@ -210,7 +231,7 @@ class PcdFilterNode(Node):
         points_3d_h = np.hstack((points_3d, np.ones((points_3d.shape[0], 1))))  # [x, y, z, 1]
 
         # Transform LiDAR points to camera frame: (n, 3)
-        points_camera = (Cf_TO_Cw_TRANSFORM @ CAMERA_TO_LIDAR_TRANSFORM @ points_3d_h.T).T[:, :3]
+        points_camera = (Cf_TO_Cw_TRANSFORM @ self.CAMERA_TO_LIDAR_TRANSFORM @ points_3d_h.T).T[:, :3]
 
         # Keep only points in front of the camera
         valid_camera_indices = points_camera[:, 2] > 0  

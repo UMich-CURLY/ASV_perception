@@ -28,6 +28,8 @@ ros_parameters:
   # global_map_topic: '/global_semantic_map'
   # global_var_topic: '/global_variance_map'
 
+  camera_frame: "wamv/camera_optical_frame"
+  lidar_frame: "wamv/lidar_link"
 
 num_classes: 10 # 9, 11
 
