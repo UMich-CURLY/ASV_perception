@@ -37,12 +37,11 @@ class ObjSegNode(Node):
 
         # Parameters Inputs
         self.ros_topic = self.config["ros_parameters"]
-        self.declare_parameter("model_path", "/home/multy-surya/ASV_perception/models/best_1.pt")
+        model_path = os.path.join(os.getcwd(), 'models/best_1.pt')
         self.declare_parameter("conf", 0.25)
 
         # Subscriber
         self.camera_topic = self.ros_topic["camera_topic"]
-        model_path = self.get_parameter("model_path").value
         self.conf = self.get_parameter("conf").value
 
         # Publisher

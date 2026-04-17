@@ -8,8 +8,8 @@ install/
 *.egg-info/
 
 # large checkpoints / weights
-mapping/EndToEnd/Segmentation/gdino_checkpoints/*.pth
-mapping/EndToEnd/Segmentation/checkpoints/*.pt
-models/*.pt
+src/mapping/EndToEnd/Segmentation/gdino_checkpoints/*.pth
+src/mapping/EndToEnd/Segmentation/checkpoints/*.pt
+src/models/
 *.pth
 *.pt
