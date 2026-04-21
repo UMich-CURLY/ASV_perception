@@ -7,7 +7,7 @@ def generate_launch_description():
     src_dir = os.path.abspath(os.path.join(launch_dir, '..'))
 
     return LaunchDescription([
-        ExecuteProcess(
+        ExecuteProcess(             # per-frame pcd publishing
             cmd=[
                 'python3',
                 'semantic_mapping/ConvBKI/semantic_pcd_publisher.py',
@@ -15,10 +15,18 @@ def generate_launch_description():
             cwd=src_dir,
             output='screen'
         ),
-        ExecuteProcess(
+        ExecuteProcess(             # global pcd publishing
             cmd=[
                 'python3',
                 'semantic_mapping/ConvBKI/semantic_pcd_publisher_global.py',
+            ],
+            cwd=src_dir,
+            output='screen'
+        ),
+        ExecuteProcess(             # semantic pcd -> occupancy grid map
+            cmd=[
+                'python3',
+                'semantic_mapping/ConvBKI/ogm_builder.py',
             ],
             cwd=src_dir,
             output='screen'
