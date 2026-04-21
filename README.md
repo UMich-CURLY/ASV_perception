@@ -29,30 +29,12 @@ and more information on parameters.
 This branch provides a ROS2 wrapper (ROS2 Humble) with open-vocabulary semantic segmentation using Grounded-SAM2, for ConvBKI. The primary intention of this work was to do 3D Mapping, though we do provide resources how localization can be supported with this wrapper (if ground_truth odometry is not available).
 
 ## Install
-
-<!-- ### Localization (for pre-processing the poses)
-You can ignore the Localization instructions if you already have the pre-processed pose data in a ROS2 bag file, or if you have the ground-truth odometry published online.
-
-See LIO-SAM documentation for software and hardware dependency information.
-
-- If using ROS1 (in which case you'll likely use ros1bridge to talk to ros2_node), use the following commands to download and compile the package.
-
-```
-git clone -b ros2_grounded_sam2 git@github.com:spsingh37/BKI_ROS.git
-mv ~/BKI_ROS/lio-sam/liorf ~/catkin_ws/src
-cd ~/catkin_ws
-catkin_make
-```
-
-- If using ROS2, use the ros2 branch of- https://github.com/TixiaoShan/LIO-SAM -->
-
-### Mapping
 - Tested on Ubuntu 22.04 (with cuda 11.8.0)
-```
+```bash
 git clone --recurse-submodules -b ros2_w26 git@github.com:UMich-CURLY/ASV_perception.git
-cd ~/BKI_ROS/EndToEnd
+cd ~/ASV_perception/src/semantic_mapping/ConvBKI
 conda env create -f environment.yaml
-conda activate ros2_grounded_sam2
+conda activate asv_perception
 export CUDA_HOME=/usr/local/cuda-11.8/
 sudo apt-get install libsparsehash-dev
 cd Segmentation/
@@ -69,46 +51,125 @@ python setup.py install
 export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libtiff.so.5
 ```
 
-## Run mapping
-
-You can run the mapping module which will create a ros2 publisher that publish the map and can be visualized on rviz2.
-
-1. Run semantic_pcd_publisher.py:
-```
-cd ~/ASV_perception/mapping/EndToEnd
-python semantic_pcd_publisher.py
+### Build ROS workspace
+```bash
+cd ~/ASV_perception
+source /opt/ros/humble/setup.bash
+colcon build --symlink-install
+source install/setup.bash
 ```
 
-2. For publishing global map (needed for object localization; visualizing can be expensize in rviz if large map):
+## Run Mapping Pipeline
+
+This pipeline publishes a semantic map in ROS 2 for visualization in RViz2. A localization source (e.g. DRIFT) is required.
+
+The pipeline has three main components. Open **three separate terminals** and start each module:
+
+### 1. Sensor Frontend (Camera + LiDAR Processing)
+
+Processes raw sensor data and generates inputs for downstream jobs.
+
+```bash
+conda activate asv_perception
+cd ~/ASV_perception
+source install/setup.bash
+ros2 launch asv_perception sensor_process.launch.py
 ```
-python semantic_pcd_publisher_global.py
+
+---
+
+### 2. Semantic Map Publisher
+
+Publishes the semantic point cloud map for visualization in RViz2.
+
+```bash
+conda activate asv_perception
+cd ~/ASV_perception
+source install/setup.bash
+ros2 launch asv_perception map_publisher.launch.py
 ```
-4. Run object localization (with Augmented reality like object position viewer):
-```
+
+**Note:** Visualizing large maps in RViz2 can be computationally expensive.
+
+#### (Optional): Object Localization Visualization
+
+Launches augmented-reality-style object position visualization:
+
+```bash
+conda activate asv_perception
+cd ~/ASV_perception
+source install/setup.bash
 python cluster_global_pub_objects.py
 ```
-5. 
-(a) Either play processed ros2 bag:
+
+---
+
+### 3. Object SLAM
+
+Runs object-level SLAM for global object association and map refinement.
+
+```bash
+conda activate asv_perception
+cd ~/ASV_perception
+source install/setup.bash
+ros2 launch asv_perception obj_slam.launch.py
 ```
+
+---
+
+## Provide Sensor Data
+
+After all modules are running, provide sensor data using one of the following:
+
+### Option A: Play a Processed ROS 2 Bag
+
+```bash
 ros2 bag play your-bag.db3
 ```
-OR
-(b) Run VRX simulation:
-```
+
+### Option B: Run VRX Simulation
+
+```bash
 ros2 launch vrx_gz competition.launch.py world:=sydney_regatta
 ```
 
 #### YAML Parameters
 
-<!-- Parameters can be set in the yaml config file, and it can be found in EndtoEnd/Configs/KITTI.yaml -->
-Parameters can be set in the yaml config file, and it can be found in ASV_perception/configs/params.yaml
+Parameters can be configured in:
 
-* lidar_topic - the name of the pointcloud topic to subscribe to
-* pose_topic - the name of the pose topic to subscribe to
+```bash
+ASV_perception/src/configs/params.yaml
+```
+
+### Sensor Topics
+
+* `lidar_topic`  
+  LiDAR point cloud topic to subscribe to.
+
+* `camera_topic`  
+  Camera image topic to subscribe to.
+
+* `caminfo_topic`  
+  Camera intrinsic calibration (`CameraInfo`) topic.
+
+### Localization Topics
+
+* `pose_topic`  
+  Pose topic used for localization (e.g. DRIFT).
+
+---
+
+### Frame Definitions
+
+* `camera_frame`  
+  Camera optical frame name.
+
+* `lidar_frame`  
+  LiDAR frame name.
+
+---
+
 * num_classes - number of semantic classes
-
-<!-- * For now, the semantic_classes, their colors, and LiDAR-camera intrinsic-extrinisics are all specified in EndtoEnd/Segmentation/utils.py -->
-
 * grid_size, min_bound, max_bound, voxel_sizes - parameters for convbki layer
 * model_path - saved weights for convbki layer
 * f - convbki layer kernel size...if you actually want to change this, pls do so in EndtoEnd/ConvBKI/ConvBKI.py...its the variable 'max_dist' there at line 12
@@ -116,8 +177,6 @@ Parameters can be set in the yaml config file, and it can be found in ASV_percep
 - Not using the following:
 * res, cr - parameters for SPVNAS segmentation net
 * seg_path - saved weights for SPVNAS segmentation net
-
-
 
 
 ## Acknowledgement
