@@ -300,8 +300,10 @@ class ConvBKIMap(Node):
 
 def main():
 
+    pkg_path = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', '..'))
+    config_path = os.path.join(pkg_path, 'configs', 'params.yaml')
+    
     # Load model parameters
-    config_path = os.path.join(os.getcwd(), '../..', 'configs/params.yaml')
     with open(config_path, "r") as stream:
         try:
             model_params = yaml.safe_load(stream)

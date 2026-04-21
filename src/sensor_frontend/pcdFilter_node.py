@@ -17,7 +17,6 @@ import numpy as np
 from std_msgs.msg import Header
 
 from tf2_ros import Buffer, TransformListener
-from tf2_geometry_msgs import do_transform_pose_stamped
 
 Cf_TO_Cw_TRANSFORM = np.eye(4)
 Cf_TO_Cw_TRANSFORM[:3, :3] = np.array([[0, -1, 0],
@@ -31,7 +30,8 @@ class PcdFilterNode(Node):
         super().__init__('pcd_filter_node')
 
         # Load parameters from YAML file
-        config_path = os.path.join(os.getcwd(), 'configs/params.yaml')
+        pkg_path = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
+        config_path = os.path.join(pkg_path, 'configs', 'params.yaml')
 
         with open(config_path, "r") as stream:
             try:
@@ -153,7 +153,7 @@ class PcdFilterNode(Node):
 
             if not want_filt_pcd:
                 time.sleep(0.01)
-                print("No subscribers for filter pcd, skipping...")
+                # print("No subscribers for filter pcd, skipping...")
                 continue
     
             self.cb_count += 1

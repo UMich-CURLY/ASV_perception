@@ -27,8 +27,11 @@ class ObjSegNode(Node):
         self.lock = threading.Lock()
         self.running = True
 
+        pkg_path = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
+        config_path = os.path.join(pkg_path, 'configs', 'params.yaml')
+        model_path = os.path.join(pkg_path, 'models', 'best_1.pt')
+        
         # Load parameters from YAML file
-        config_path = os.path.join(os.getcwd(), 'configs/params.yaml')
         with open(config_path, "r") as stream:
             try:
                 self.config = yaml.safe_load(stream)
@@ -37,7 +40,6 @@ class ObjSegNode(Node):
 
         # Parameters Inputs
         self.ros_topic = self.config["ros_parameters"]
-        model_path = os.path.join(os.getcwd(), 'models/best_1.pt')
         self.declare_parameter("conf", 0.25)
 
         # Subscriber
