@@ -8,27 +8,27 @@ import torch.nn.functional as F
 # This module is intended for ROS integration
 
 
-def remap_seg(seg):
-    labels_dict = {
-        1: [12], # Building
-        2: [13], # Barrier
-        3: [], # Other
-        4: [5, 6, 7], # Pedestrian
-        5: [17, 18], # Pole
-        6: [8, 9], # Road
-        7: [11, 16], # Ground
-        8: [10],# Sidewalk
-        9: [14, 15], # Vegetation
-        10: [0, 1, 2, 3, 4] # Vehicle
-    }
-    new_labels = torch.zeros_like(seg)[:, :11]
-    for i in labels_dict.keys():
-        if len(labels_dict[i]) == 0:
-            continue
-        temp_tensor = torch.vstack([seg[:, i] for i in labels_dict[i]])
-        temp_tensor = torch.sum(temp_tensor, dim=0)
-        new_labels[:, i] = temp_tensor
-    return new_labels
+# def remap_seg(seg):
+#     labels_dict = {
+#         1: [12], # Building
+#         2: [13], # Barrier
+#         3: [], # Other
+#         4: [5, 6, 7], # Pedestrian
+#         5: [17, 18], # Pole
+#         6: [8, 9], # Road
+#         7: [11, 16], # Ground
+#         8: [10],# Sidewalk
+#         9: [14, 15], # Vegetation
+#         10: [0, 1, 2, 3, 4] # Vehicle
+#     }
+#     new_labels = torch.zeros_like(seg)[:, :11]
+#     for i in labels_dict.keys():
+#         if len(labels_dict[i]) == 0:
+#             continue
+#         temp_tensor = torch.vstack([seg[:, i] for i in labels_dict[i]])
+#         temp_tensor = torch.sum(temp_tensor, dim=0)
+#         new_labels[:, i] = temp_tensor
+#     return new_labels
 
 
 class BKINet(torch.nn.Module):

@@ -1,14 +1,10 @@
 import yaml
 import os
 import torch
-# from Segmentation.utils import *
 from utils import *
 import time
 import rclpy
 from rclpy.node import Node
-from rclpy.qos import qos_profile_sensor_data
-from rclpy.duration import Duration
-import ros2_numpy
 
 from sensor_msgs.msg import PointCloud2, Image, PointField
 from sensor_msgs_py import point_cloud2
