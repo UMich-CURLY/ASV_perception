@@ -10,7 +10,7 @@ def generate_launch_description():
         ExecuteProcess(
             cmd=[
                 'python3',
-                'sensor_frontend/objseg_node.py',
+                'sensor_frontend/objseg_yolo.py',
             ],
             cwd=src_dir,
             output='screen'

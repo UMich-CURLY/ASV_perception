@@ -69,6 +69,10 @@ The pipeline has three main components. Open **three separate terminals** and st
 
 Processes raw sensor data and generates inputs for downstream jobs.
 
+Executed scripts: 
+1. Image segmentation using YOLO: ```objseg_yolo.py```
+2. Point clouds projection and filtering: ```pcdFilter_node.py```
+
 ```bash
 conda activate asv_perception
 cd ~/ASV_perception
@@ -81,6 +85,11 @@ ros2 launch asv_perception sensor_process.launch.py
 ### 2. Semantic Map Publisher
 
 Publishes the semantic point cloud map for visualization in RViz2.
+
+Executed scripts: 
+1. Per-frame semantic point clouds publisher: ```semantic_pcd_publisher.py```
+2. Global semantic point cloud publisher: ```semantic_pcd_publisher_global.py```
+3. Occupancy grid map publisher: ```ogm_builder.py```
 
 ```bash
 conda activate asv_perception
