@@ -13,30 +13,30 @@ from visualization_msgs.msg import MarkerArray, Marker
 
 def load_model(model_params, dev):
     # Segmentation network
-
+    map_params = model_params["ConvBKI"]
     # KITTI
     if model_params["num_classes"] == 11:
         seg_net = SPVCNN(
             num_classes=19,
-            cr=model_params["cr"],
-            pres=model_params["res"],
-            vres=model_params["res"]).to(dev)
+            cr=map_params["cr"],
+            pres=map_params["res"],
+            vres=map_params["res"]).to(dev)
         # seg_net.load_state_dict(torch.load(model_params["seg_path"]))
     else:  # RELLIS
         seg_net = SPVCNN(
             num_classes=model_params["num_classes"],
-            cr=model_params["cr"],
-            pres=model_params["res"],
-            vres=model_params["res"]).to(dev)
+            cr=map_params["cr"],
+            pres=map_params["res"],
+            vres=map_params["res"]).to(dev)
         # seg_net.load_state_dict(torch.load(model_params["seg_path"])['model'])
 
-    prop_net = TransformWorldStatic(torch.tensor(model_params["voxel_sizes"]).to(dev))
+    prop_net = TransformWorldStatic(torch.tensor(map_params["voxel_sizes"]).to(dev))
 
-    grid_size = torch.tensor(model_params["grid_size"]).to(dev)
-    min_bound = torch.tensor(model_params["min_bound"]).to(dev)
-    max_bound = torch.tensor(model_params["max_bound"]).to(dev)
+    grid_size = torch.tensor(map_params["grid_size"]).to(dev)
+    min_bound = torch.tensor(map_params["min_bound"]).to(dev)
+    max_bound = torch.tensor(map_params["max_bound"]).to(dev)
     num_classes = model_params["num_classes"]
-    f = model_params["f"]
+    f = map_params["f"]
     print("num_classes: ", num_classes)
     bki_layer = ConvBKI(grid_size, min_bound, max_bound,
                         filter_size=f, num_classes=num_classes, device=dev)
@@ -75,7 +75,7 @@ def publish_local_map(labeled_grid, centroids, voxel_dims, colors, next_map, tra
 
     # Remove high variance points
     semantic_sums = np.sum(semantic_labels, axis=-1, keepdims=False)
-    valid_mask = semantic_sums >= 0.0 # 0.1
+    valid_mask = semantic_sums >= 0.1 # 0.1
 
     semantic_labels = semantic_labels[valid_mask, :]
     centroids = centroids[valid_mask, :]

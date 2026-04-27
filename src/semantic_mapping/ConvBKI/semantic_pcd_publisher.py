@@ -18,13 +18,12 @@ import struct  # Needed for proper color packing
 import cv2
 
 
-class ConvBKIMap(Node):
+class MapPublisher(Node):
 
-    def __init__(self, model_params, res, e2e_net, dev, dtype, voxel_sizes, color, publish=False):
+    def __init__(self, model_params, e2e_net, dev, dtype):
         super().__init__('convBKI_map_node')
 
         self.get_logger().info("Initializing the node!")
-        self.publish = publish
         self.bridge = CvBridge()
 
         # self.fixed_class_id_mapping = {
@@ -67,16 +66,16 @@ class ConvBKIMap(Node):
         self.ts.registerCallback(self.callback)
 
         # Other initialization
+        self.voxel_sizes=model_params["ConvBKI"]["voxel_sizes"]
+        self.color=model_params["ConvBKI"]["colors"]
+        self.publish_map=model_params["ConvBKI"]["publish_map"]
         self.lidar = None
-        self.res = res
         self.seg_input = None
         self.inv = None
         self.lidar_pose = None
         self.e2e_net = e2e_net
         self.dev = dev
         self.dtype = dtype
-        self.voxel_sizes = voxel_sizes
-        self.color = color
 
         self.get_logger().info(
             "Map Publisher Node up. Subscribed to:\n"
@@ -227,7 +226,7 @@ class ConvBKIMap(Node):
 
 
             # Optionally, continue using the semantic map and variance map publishing
-            if self.publish:
+            if self.publish_map:
                 # Generate the local semantic map (this will return a single marker)
                 marker = publish_local_map(self.e2e_net.grid, self.e2e_net.convbki_net.centroids, 
                                             self.voxel_sizes, self.color, None, self.e2e_net.propagation_net.translation)
@@ -287,7 +286,7 @@ class ConvBKIMap(Node):
                 self.pc_pub.publish(pc2_msg)
 
                 # Optionally, continue using the semantic map and variance map publishing
-                if self.publish:
+                if self.publish_map:
                     self.var_map = publish_var_map(self.e2e_net.grid, self.e2e_net.convbki_net.centroids, 
                                                 self.voxel_sizes, self.color, self.var_map, 
                                                 self.e2e_net.propagation_net.translation)
@@ -314,15 +313,14 @@ def main():
 
     # Initialize ROS2 node
     rclpy.init()
-    node = ConvBKIMap(
+    node = MapPublisher(
         model_params=model_params,
-        res=model_params["res"],
         e2e_net=e2e_net,
         dev=dev,
-        dtype=dtype,
-        voxel_sizes=model_params["voxel_sizes"],
-        color=model_params["colors"],
-        publish=model_params["publish"]
+        dtype=dtype
+        # voxel_sizes=model_params["ConvBKI"]["voxel_sizes"],
+        # color=model_params["ConvBKI"]["colors"],
+        # publish_map=model_params["ConvBKI"]["publish_map"]
     )
 
     rclpy.spin(node)
