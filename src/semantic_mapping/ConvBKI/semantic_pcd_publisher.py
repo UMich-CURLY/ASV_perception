@@ -41,7 +41,7 @@ class MapPublisher(Node):
         self.ros_topic = model_params["ros_parameters"]
 
         # Publishers
-        self.overlay_pub = self.create_publisher(Image, "/debug/lidar_camera_overlay", 10)
+        self.overlay_pub = self.create_publisher(Image, self.ros_topic["overlay_topic"], 10)
         # self.map_pub = self.create_publisher(MarkerArray, self.ros_topic["map_topic"], 10)
         self.var_pub = self.create_publisher(MarkerArray, self.ros_topic["var_topic"], 10)
         self.next_map = MarkerArray()
@@ -155,12 +155,17 @@ class MapPublisher(Node):
 
         # Initialize point labels (N, num_classes) → One-hot encoding
         point_labels = np.zeros((self.proj_pix.shape[0], self.num_classes), dtype=np.float32)
-
-        for i, (u, v) in enumerate(self.proj_pix):
-            if combined_mask[int(v), int(u)] > 0:  # Check if point falls inside any mask
-                class_idx = combined_mask[int(v), int(u)] - 1  # Subtract 1 to get correct class index
-                point_labels[i, class_idx] = 1.0
         
+        # vectorized
+        u = self.proj_pix[:, 0].astype(np.int32)
+        v = self.proj_pix[:, 1].astype(np.int32)
+
+        mask_values = combined_mask[v, u]
+        valid = mask_values > 0
+        class_idx = mask_values[valid].astype(np.int32) - 1
+
+        point_labels[valid, class_idx] = 1.0
+
         return point_labels
 
     def publish_overlay_image(self, annot_msg):
@@ -318,9 +323,6 @@ def main():
         e2e_net=e2e_net,
         dev=dev,
         dtype=dtype
-        # voxel_sizes=model_params["ConvBKI"]["voxel_sizes"],
-        # color=model_params["ConvBKI"]["colors"],
-        # publish_map=model_params["ConvBKI"]["publish_map"]
     )
 
     rclpy.spin(node)
