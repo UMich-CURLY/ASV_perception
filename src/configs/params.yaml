@@ -11,15 +11,14 @@ ros_parameters:
   ## DRIFT
   pose_topic: '/drift/pose'
 
-  ## from objseg_yolo.py
+  ## Sensor Fronend Processing
   det_mask_topic: '/cam_det/segmentation_mask'
   annot_topic: '/cam_det/annotated_image'
-  
-  ## from pcdFilter_node.py
   filt_pcd_topic: '/lidars/filtered_pcd'      # Filtered LiDAR pcd
-  # det_topic: '/asv_object_slam/detection/list_raw'
+  lm_det_topic: '/cam_lidar/detection/landmarks'
 
-  ## Semantic pcd and map publisher
+  ## Semantic Mapping
+  overlay_topic: '/convBKI/debug/lidar_camera_overlay'
   semantic_pcd_topic: '/convBKI/semantic_pcd'
   global_pcd_topic: '/convBKI/global_semantic_pcd'
   ogm_topic: '/convBKI/OGM_global'
@@ -28,7 +27,13 @@ ros_parameters:
   # global_map_topic: '/global_semantic_map'
   # global_var_topic: '/global_variance_map'
 
-  # Sensor Frame ID
+  ## Object SLAM
+  anchor_topic: '/obj_slam/gtsam/pose_anchor'
+  keyframe_topic: '/obj_slam/gtsam/pose_keyframe'
+
+  # Frame ID
+  global_frame: "map"
+  base_link_frame: "wamv/base_link"
   camera_frame: "wamv/base_link/camera_sensor_optical"
   lidar_frame: "wamv/base_link/lidar_sensor"
 
@@ -77,3 +82,15 @@ ConvBKI:
           7: [30, 60, 150]      # water...dark-blue
           8: [160, 160, 160]    # dock...gray
           9: [0, 102, 0]        # land...darkgreen
+
+Obj_SLAM:
+
+  drift_bridge:
+    # Timing Gates (ms)
+    backtrack_tol_ms: 5.0         # tolerate small backtracks/dupes
+    min_dt_floor_ms: 5.0          # ignore micro-bursts
+    dt_thresh_ms: 50.0            # time-based KF fallback if no motion
+
+    # Motion Thresholds
+    trans_thresh_m: 0.20          # (meter)
+    yaw_thresh_deg: 5.0           # (degree)
