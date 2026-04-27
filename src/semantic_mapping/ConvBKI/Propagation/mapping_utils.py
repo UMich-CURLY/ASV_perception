@@ -41,20 +41,35 @@ class TransformWorldStatic(torch.nn.Module):
 
     def forward(self, new_pose, current_map):
         prev_pose = self.global_pose
-        self.global_pose = new_pose
-        if self.initial_pose is None:
+        # self.global_pose = new_pose
+        # if self.initial_pose is None:
+        #     prev_pose = new_pose
+        #     self.initial_pose = new_pose
+        #     # self.initial_pose = new_pose
+        #     # return torch.eye(4).to(new_pose.device), current_map
+        # # Find the closest translation in voxels
+        # prev_to_initial = torch.matmul(torch.linalg.inv(self.initial_pose), prev_pose)
+        # prev_translation = prev_to_initial[:3, 3]
+        # prev_voxel = torch.round(prev_translation / self.voxel_sizes)
+
+        # new_to_initial = torch.matmul(torch.linalg.inv(self.initial_pose), new_pose)
+        # new_translation = new_to_initial[:3, 3]
+        # R = new_to_initial[:3, :3]
+        # new_voxel = torch.round(new_translation / self.voxel_sizes)
+
+        # Directly take new_pose as current position and generate the map here
+        if prev_pose is None:
             prev_pose = new_pose
-            self.initial_pose = new_pose
-            # self.initial_pose = new_pose
-            # return torch.eye(4).to(new_pose.device), current_map
-        # Find the closest translation in voxels
-        prev_to_initial = torch.matmul(torch.linalg.inv(self.initial_pose), prev_pose)
-        prev_translation = prev_to_initial[:3, 3]
+
+        self.global_pose = new_pose
+
+        # Previous pose translation in map/world frame
+        prev_translation = prev_pose[:3, 3]
         prev_voxel = torch.round(prev_translation / self.voxel_sizes)
 
-        new_to_initial = torch.matmul(torch.linalg.inv(self.initial_pose), new_pose)
-        new_translation = new_to_initial[:3, 3]
-        R = new_to_initial[:3, :3]
+        # Current pose translation and rotation in map/world frame
+        new_translation = new_pose[:3, 3]
+        R = new_pose[:3, :3]
         new_voxel = torch.round(new_translation / self.voxel_sizes)
 
         self.translation = new_voxel * self.voxel_sizes
