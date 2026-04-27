@@ -12,16 +12,7 @@ from sensor_msgs_py import point_cloud2
 import transforms3d
 
 import numpy as np
-from std_msgs.msg import Header
-
 from tf2_ros import Buffer, TransformListener
-
-Cf_TO_Cw_TRANSFORM = np.eye(4)
-Cf_TO_Cw_TRANSFORM[:3, :3] = np.array([[0, -1, 0],
-                                       [0, 0, -1],
-                                       [1, 0, 0]])
-
-##--------------------------------------------------------------##
 
 class PcdFilterNode(Node):
     def __init__(self):
@@ -200,9 +191,7 @@ class PcdFilterNode(Node):
                         PointField(name="v", offset=20, datatype=PointField.FLOAT32, count=1)
                     ]
 
-                    header = Header()
-                    header.stamp = self.pcd_header.stamp
-                    header.frame_id = "map"
+                    header = self.pcd_header
                     filtered_pcd = point_cloud2.create_cloud(header, pcd_fields, combined_data)
                     self.filt_pcd_pub.publish(filtered_pcd)
                 
@@ -229,14 +218,14 @@ class PcdFilterNode(Node):
         points_3d_h = np.hstack((points_3d, np.ones((points_3d.shape[0], 1))))  # [x, y, z, 1]
 
         # Transform LiDAR points to camera frame: (n, 3)
-        points_camera = (Cf_TO_Cw_TRANSFORM @ self.CAMERA_TO_LIDAR_TRANSFORM @ points_3d_h.T).T[:, :3]
+        points_camera = (self.CAMERA_TO_LIDAR_TRANSFORM @ points_3d_h.T).T[:, :3]
 
         # Keep only points in front of the camera
         valid_camera_indices = points_camera[:, 2] > 0  
         points_camera = points_camera[valid_camera_indices]
 
         # Project onto image plane
-        pixels = (self.CAMERA_INTRINSICS @ points_camera.T).T                # (n, 3)
+        pixels = (self.CAMERA_INTRINSICS @ points_camera.T).T           # (n, 3)
         pixels = pixels[:, :2] / pixels[:, 2:]  # Normalize by depth    # (n, 2)
 
         # Filter points within image bounds

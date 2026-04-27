@@ -6,7 +6,7 @@ ros_parameters:
   # caminfo_topic: '/camera/camera/color/camera_info'
   lidar_topic: '/wamv/sensors/lidars/lidar_sensor/points'
   camera_topic: '/wamv/sensors/cameras/camera_sensor/optical/image_raw'
-  caminfo_topic: '/wamv/sensors/cameras/camera_sensor/camera_info'
+  caminfo_topic: '/wamv/sensors/cameras/camera_sensor/optical/camera_info'
 
   ## DRIFT
   pose_topic: '/drift/pose'
@@ -28,8 +28,8 @@ ros_parameters:
   # global_map_topic: '/global_semantic_map'
   # global_var_topic: '/global_variance_map'
 
-  camera_frame: "wamv/camera_optical_frame"
-  lidar_frame: "wamv/lidar_link"
+  camera_frame: "wamv/base_link/camera_sensor_optical"
+  lidar_frame: "wamv/base_link/lidar_sensor"
 
 num_classes: 10 # 9, 11
 
