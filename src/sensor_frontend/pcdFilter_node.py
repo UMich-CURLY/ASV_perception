@@ -7,9 +7,12 @@ from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 
 import ros2_numpy
-from sensor_msgs.msg import PointCloud2, PointField, CameraInfo
+from vision_msgs.msg import Detection2D, Detection2DArray, ObjectHypothesisWithPose
+from sensor_msgs.msg import PointCloud2, PointField, CameraInfo, Image
 from sensor_msgs_py import point_cloud2
 import transforms3d
+
+from cv_bridge import CvBridge
 
 import numpy as np
 from tf2_ros import Buffer, TransformListener
@@ -30,6 +33,8 @@ class PcdFilterNode(Node):
             
         self.num_classes = self.config["num_classes"]
         self.ros_parameters = self.config["ros_parameters"]
+
+        self.bridge = CvBridge()
         
         # Initialize TF2 Buffer and Listener
         self.tf_buffer = Buffer()
@@ -38,10 +43,19 @@ class PcdFilterNode(Node):
         self.lidar_frame = self.ros_parameters["lidar_frame"]
 
         # Subscriber
+        # Raw LiDAR point cloud
         self.pcd_sub = self.create_subscription(
             PointCloud2,
             self.ros_parameters["lidar_topic"],
             self.pcd_callback,
+            qos_profile_sensor_data
+        )
+        # segmentation Mask
+        self.latest_mask = None
+        self.mask_sub = self.create_subscription(
+            Image,
+            self.ros_parameters["det_mask_topic"],
+            self.mask_callback,
             qos_profile_sensor_data
         )
         # Camera intrinsics / Subscriber for Camera Info
@@ -57,8 +71,13 @@ class PcdFilterNode(Node):
         self.CAMERA_TO_LIDAR_TRANSFORM = None
         self.lookup_timer = self.create_timer(1.0, self.get_static_extrinsics)
 
+        # Landmarks Detection Array
+        self.landmark_ids = {1, 2, 3, 4, 5, 6}      # cone and sphere for now
+        self.min_landmark_points = 3
+
         # Publisher
-        self.filt_pcd_pub = self.create_publisher(PointCloud2, self.ros_parameters["filt_pcd_topic"], 10)  # Filtered pcd Publisher
+        self.filt_pcd_pub = self.create_publisher(PointCloud2, self.ros_parameters["filt_pcd_topic"], 10)   # Filtered pcd Publisher
+        self.lm_det_pub = self.create_publisher(Detection2DArray, self.ros_parameters["lm_det_topic"], 10)  # Landmarks deteciton array Publisher
 
         # Worker thread
         self.running = True
@@ -111,6 +130,13 @@ class PcdFilterNode(Node):
             except Exception:
                 self.get_logger().warn("Still waiting for TF frames to appear in buffer...")
         
+    # segmentation Mask Callback
+    def mask_callback(self, msg: Image):
+        label_mask = self.bridge.imgmsg_to_cv2(msg, desired_encoding="mono8")
+        label_mask = np.asarray(label_mask, dtype=np.uint8)
+        
+        with self.lock:
+            self.latest_mask = label_mask
 
     # LiDAR PointCloud Callback
     def pcd_callback(self, msg: PointCloud2):
@@ -130,7 +156,7 @@ class PcdFilterNode(Node):
             self.latest_lidar_raw = lidar_raw
         # print(f"Received LiDAR pcd with {self.latest_lidar_raw.shape[0]} points.")
 
-    
+    ## May need to use ApproximateTimeSynchronizer in the future.
     def worker_loop(self):
         self.get_logger().info("PCD Filter Worker Thread Started")
         while rclpy.ok() and self.running:
@@ -139,8 +165,9 @@ class PcdFilterNode(Node):
                 continue
 
             want_filt_pcd = self.filt_pcd_pub.get_subscription_count() > 0
+            want_det = self.lm_det_pub.get_subscription_count() > 0
 
-            if not want_filt_pcd:
+            if not (want_filt_pcd or want_det):
                 time.sleep(0.01)
                 # print("No subscribers for filter pcd, skipping...")
                 continue
@@ -153,6 +180,10 @@ class PcdFilterNode(Node):
                 else:
                     lidar_raw = self.latest_lidar_raw.copy()  # snapshot
                     self.latest_lidar_raw = None
+                if self.latest_mask is None:
+                    label_mask = None
+                else:
+                    label_mask = self.latest_mask.copy()
 
             if lidar_raw is None:
                 time.sleep(0.005)
@@ -194,6 +225,19 @@ class PcdFilterNode(Node):
                     header = self.pcd_header
                     filtered_pcd = point_cloud2.create_cloud(header, pcd_fields, combined_data)
                     self.filt_pcd_pub.publish(filtered_pcd)
+
+                # if want_det and label_mask is not None:
+                if label_mask is not None:
+
+                    det_msg = self.build_landmark_detections(
+                        lidar_points=self.lidar,
+                        proj_pix=self.proj_pix,
+                        label_mask=label_mask,
+                        header=self.pcd_header
+                    )
+
+                    if det_msg.detections:
+                        self.lm_det_pub.publish(det_msg)
                 
                 t1 = time.time()
                 infer_ms = (t1 - t0) * 1000.0
@@ -237,6 +281,42 @@ class PcdFilterNode(Node):
         pixels = pixels[valid_fov_indices].astype(int)
         
         return pixels, points_camera[valid_fov_indices, 2], valid_indices
+
+    def build_landmark_detections(self, lidar_points, proj_pix, label_mask, header):
+        det_array = Detection2DArray()
+        det_array.header = header
+
+        u = proj_pix[:, 0].astype(np.int32)
+        v = proj_pix[:, 1].astype(np.int32)
+
+        mask_values = label_mask[v, u]
+
+        for class_id in sorted(self.landmark_ids):
+            idx = mask_values == class_id
+
+            if np.count_nonzero(idx) < self.min_landmark_points:
+                continue
+
+            obj_points = lidar_points[idx, :3]
+            centroid = np.mean(obj_points, axis=0)
+            point_count = obj_points.shape[0]
+
+            det = Detection2D()
+            det.header = header
+
+            hyp = ObjectHypothesisWithPose()
+            hyp.hypothesis.class_id = str(class_id)
+            hyp.hypothesis.score = float(point_count)
+
+            hyp.pose.pose.position.x = float(centroid[0])
+            hyp.pose.pose.position.y = float(centroid[1])
+            hyp.pose.pose.position.z = float(centroid[2])
+            hyp.pose.pose.orientation.w = 1.0
+
+            det.results.append(hyp)
+            det_array.detections.append(det)
+
+        return det_array
 
 
 def main(args=None):
