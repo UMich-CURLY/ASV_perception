@@ -39,7 +39,7 @@ class PcdFilterNode(Node):
         # Initialize TF2 Buffer and Listener
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
-        self.camera_frame = self.ros_parameters["camera_frame"]
+        self.camera_frame = self.ros_parameters["camera_optical_frame"]
         self.lidar_frame = self.ros_parameters["lidar_frame"]
 
         # Subscriber
@@ -77,7 +77,7 @@ class PcdFilterNode(Node):
 
         # Publisher
         self.filt_pcd_pub = self.create_publisher(PointCloud2, self.ros_parameters["filt_pcd_topic"], 10)   # Filtered pcd Publisher
-        self.lm_det_pub = self.create_publisher(Detection2DArray, self.ros_parameters["lm_det_topic"], 10)  # Landmarks deteciton array Publisher
+        self.lm_det_pub = self.create_publisher(Detection2DArray, self.ros_parameters["lm_det_topic"], 10)  # Landmarks detection array Publisher
 
         # Worker thread
         self.running = True
@@ -130,7 +130,7 @@ class PcdFilterNode(Node):
             except Exception:
                 self.get_logger().warn("Still waiting for TF frames to appear in buffer...")
         
-    # segmentation Mask Callback
+    # Segmentation Mask Callback
     def mask_callback(self, msg: Image):
         label_mask = self.bridge.imgmsg_to_cv2(msg, desired_encoding="mono8")
         label_mask = np.asarray(label_mask, dtype=np.uint8)
@@ -233,7 +233,7 @@ class PcdFilterNode(Node):
                         lidar_points=self.lidar,
                         proj_pix=self.proj_pix,
                         label_mask=label_mask,
-                        header=self.pcd_header
+                        header=self.camera_header
                     )
 
                     if det_msg.detections:

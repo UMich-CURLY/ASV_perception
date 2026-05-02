@@ -30,11 +30,13 @@ ros_parameters:
   ## Object SLAM
   anchor_topic: '/obj_slam/gtsam/pose_anchor'
   keyframe_topic: '/obj_slam/gtsam/pose_keyframe'
+  meas_topic: '/obj_slam/detection/meas_bearing_range'
 
   # Frame ID
   global_frame: "map"
   base_link_frame: "wamv/base_link"
-  camera_frame: "wamv/base_link/camera_sensor_optical"
+  camera_link_frame: "wamv/base_link/camera_sensor"
+  camera_optical_frame: "wamv/base_link/camera_sensor_optical"
   lidar_frame: "wamv/base_link/lidar_sensor"
 
 num_classes: 10 # 9, 11
@@ -94,3 +96,9 @@ Obj_SLAM:
     # Motion Thresholds
     trans_thresh_m: 0.20          # (meter)
     yaw_thresh_deg: 5.0           # (degree)
+  
+  lm_tracker:
+    drop_seconds: 1.5             # when to declare as LOST
+    promote_hits: 3               # when to promote
+    promote_window: 5             # time window for promotion
+    min_score: 0.0                # min detection score

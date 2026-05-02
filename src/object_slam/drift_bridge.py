@@ -43,7 +43,7 @@ class DriftBridge(Node):
 
 
         # frames
-        self.global_frame = self.params["ros_parameters"]["global_frame"]
+        self.odom_frame = self.params["ros_parameters"]["global_frame"]
 
         # Timing Gates (ms)
         self.backtrack_tol_ms = self.params["Obj_SLAM"]["drift_bridge"]["backtrack_tol_ms"]   # tolerate small backtracks/dupes
@@ -109,7 +109,7 @@ class DriftBridge(Node):
     def _publish_anchor(self, p, yaw, hdr_ns):
         msg = PoseWithCovarianceStamped()
         msg.header.stamp = self._ns_to_time(hdr_ns)
-        msg.header.frame_id = self.global_frame
+        msg.header.frame_id = self.odom_frame
 
         msg.pose.pose.position = Point(x=float(p.x), y=float(p.y), z=0.0)
         # simple yaw→quat
@@ -136,7 +136,7 @@ class DriftBridge(Node):
     def _publish_keyframe(self, p, yaw, hdr_ns, dx_b, dy_b, dyaw, dt_ms):
         odom = Odometry()
         odom.header.stamp = self._ns_to_time(hdr_ns)
-        odom.header.frame_id = self.global_frame
+        odom.header.frame_id = self.odom_frame
         odom.child_frame_id = "drift_kf"
 
         # absolute pose at KF
@@ -155,7 +155,7 @@ class DriftBridge(Node):
         odom.twist.covariance = cov
 
         self.pub_kf.publish(odom)
-        self.get_logger().info("Published drift_kf")
+        # self.get_logger().info("Published drift_kf")
 
     ### CALLBACK
     def cb_pose(self, msg: PoseStamped):
