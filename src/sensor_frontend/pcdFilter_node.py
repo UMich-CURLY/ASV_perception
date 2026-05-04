@@ -72,8 +72,8 @@ class PcdFilterNode(Node):
         self.lookup_timer = self.create_timer(1.0, self.get_static_extrinsics)
 
         # Landmarks Detection Array
-        self.landmark_ids = {1, 2, 3, 4, 5, 6}      # cone and sphere for now
-        self.min_landmark_points = 3
+        self.landmark_ids = set(self.config["Obj_SLAM"]["landmark_ids"])
+        self.min_landmark_points = self.config["Obj_SLAM"]["promote_hits"]
 
         # Publisher
         self.filt_pcd_pub = self.create_publisher(PointCloud2, self.ros_parameters["filt_pcd_topic"], 10)   # Filtered pcd Publisher
@@ -226,14 +226,13 @@ class PcdFilterNode(Node):
                     filtered_pcd = point_cloud2.create_cloud(header, pcd_fields, combined_data)
                     self.filt_pcd_pub.publish(filtered_pcd)
 
-                # if want_det and label_mask is not None:
-                if label_mask is not None:
+                if want_det and (label_mask is not None):
 
                     det_msg = self.build_landmark_detections(
                         lidar_points=self.lidar,
                         proj_pix=self.proj_pix,
                         label_mask=label_mask,
-                        header=self.camera_header
+                        header=self.pcd_header
                     )
 
                     if det_msg.detections:

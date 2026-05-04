@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Tuple, List
+from typing import Dict, Tuple
 import math
 import rclpy
 from rclpy.node import Node
@@ -140,9 +140,7 @@ class TrackManager:  # [class_id, TrackManager]
 ### TRACKING NODE
 class TrackingNode(Node):
     def __init__(self) -> None:
-        super().__init__("tracking")
-
-        self.set_parameters([rclpy.parameter.Parameter('use_sim_time', rclpy.Parameter.Type.BOOL, True)])
+        super().__init__("landmarks_tracker")
 
         pkg_path = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
         config_path = os.path.join(pkg_path, 'configs', 'params.yaml')
@@ -154,34 +152,13 @@ class TrackingNode(Node):
             except yaml.YAMLError as exc:
                 print(exc)
 
-
-        # parameters
-        # self.declare_parameter("detections_topic", "/asv_object_slam/detection/list_raw")
-        # self.declare_parameter("meas_topic", "/asv_object_slam/detection/meas_bearing_range")
-        # self.declare_parameter("odom_frame", "wamv/odom")
-        # self.declare_parameter("base_link_frame", "wamv/wamv/base_link")
-        # self.declare_parameter("drop_seconds", 1.5)  # when to declare as LOST
-        # self.declare_parameter("promote_hits", 3)    # when to promote
-        # self.declare_parameter("promote_window", 5)  # time window for promotion
-        # self.declare_parameter("min_score", 0.0)  # min detection score
-
-        # self.detections_topic: str = self.get_parameter("detections_topic").value
-        # self.meas_topic: str = self.get_parameter("meas_topic").value
-        # self.odom_frame: str = self.get_parameter("odom_frame").value
-        # self.base_link_frame: str = self.get_parameter("base_link_frame").value
-        # self.drop_seconds: float = float(self.get_parameter("drop_seconds").value)
-        # self.promote_hits: int = int(self.get_parameter("promote_hits").value)
-        # self.promote_window: int = int(self.get_parameter("promote_window").value)
-        # self.min_score: float = float(self.get_parameter("min_score").value)
-
         # parameters
         self.lm_det_topic = self.params["ros_parameters"]["lm_det_topic"]
         self.meas_topic = self.params["ros_parameters"]["meas_topic"]
         self.odom_frame = self.params["ros_parameters"]["global_frame"]
         self.base_link_frame = self.params["ros_parameters"]["base_link_frame"]
-        self.camera_link_frame = self.params["ros_parameters"]["camera_link_frame"]
         self.drop_seconds = float(self.params["Obj_SLAM"]["lm_tracker"]["drop_seconds"])
-        self.promote_hits = int(self.params["Obj_SLAM"]["lm_tracker"]["promote_hits"])
+        self.promote_hits = int(self.params["Obj_SLAM"]["promote_hits"])
         self.promote_window = int(self.params["Obj_SLAM"]["lm_tracker"]["promote_window"])
         self.min_score = float(self.params["Obj_SLAM"]["lm_tracker"]["min_score"])
 
@@ -229,7 +206,7 @@ class TrackingNode(Node):
             try:
                 # camera_topical -> base_link
                 tf_bl = self.tf_buffer.lookup_transform(
-                    self.base_link_frame, self.camera_link_frame, 
+                    self.base_link_frame, ps_cam.header.frame_id, 
                     rclpy.time.Time(),              # fetch the latest available transform
                     timeout=Duration(seconds=0.2),
                 )
