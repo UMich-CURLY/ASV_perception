@@ -6,16 +6,31 @@ import sensor_msgs_py.point_cloud2 as pc2
 import numpy as np
 from sklearn.cluster import DBSCAN
 import struct
+import os, yaml
 
 class PointCloudCluster(Node):
     def __init__(self):
         super().__init__('pointcloud_cluster')
+
+        pkg_path = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', '..'))
+        config_path = os.path.join(pkg_path, 'configs', 'params.yaml')
+
+        # Load model parameters
+        with open(config_path, "r") as stream:
+            try:
+                self.params = yaml.safe_load(stream)
+            except yaml.YAMLError as exc:
+                print(exc)
+        
+        self.ros_params = self.params["ros_parameters"]
+        self.world_frame = self.ros_params["global_frame"]
+
         self.subscription = self.create_subscription(
             PointCloud2,
-            '/global_pointcloud',  # Change this to match your topic name
+            self.ros_params["global_pcd_topic"],
             self.pointcloud_callback,
             10)
-        self.publisher = self.create_publisher(MarkerArray, 'cluster_centroids', 10)
+        self.publisher = self.create_publisher(MarkerArray, self.ros_params["cluster_centroids"], 10)
         
         self.cluster_centroids = []  # List to store cluster centroids
         self.eps = 1.15  # Distance threshold for clustering
@@ -103,7 +118,7 @@ class PointCloudCluster(Node):
         marker_array = MarkerArray()
         for i, centroid in enumerate(self.cluster_centroids):
             marker = Marker()
-            marker.header.frame_id = "map"  # Set to the correct reference frame
+            marker.header.frame_id = self.world_frame
             marker.header.stamp = self.get_clock().now().to_msg()
             marker.ns = "cluster_centroids"
             marker.id = i

@@ -26,20 +26,48 @@ ros_parameters:
   var_topic: '/convBKI/VarMap_global'
   # global_map_topic: '/global_semantic_map'
   # global_var_topic: '/global_variance_map'
+  cluster_centroids: '/convBKI/cluster_centroids'
 
   ## Object SLAM
   anchor_topic: '/obj_slam/gtsam/pose_anchor'
   keyframe_topic: '/obj_slam/gtsam/pose_keyframe'
   meas_topic: '/obj_slam/detection/meas_bearing_range'
+  opt_pose_topic: '/obj_slam/gtsam/optimized_pose'
+  opt_path_topci: '/obj_slam/gtsam/optimized_path'
+  opt_landmarks_topic: '/obj_slam/gtsam/optimized_landmarks'
 
   # Frame ID
   global_frame: "map"
   base_link_frame: "wamv/base_link"
-  camera_link_frame: "wamv/base_link/camera_sensor"
   camera_optical_frame: "wamv/base_link/camera_sensor_optical"
   lidar_frame: "wamv/base_link/lidar_sensor"
 
+# number of detection class
 num_classes: 10 # 9, 11
+
+# rviz color
+# rviz_colors: # rgb, grounded_sam2
+#         0: [200, 275, 200] # tree...very light green
+#         1: [0, 102, 0] # grass-shore...darkgreen
+#         2: [160, 160, 160] # concrete_platform...gray
+#         3: [30, 60, 150] # water...dark-blue
+#         4: [255, 30, 30] # redbuoy...red
+#         5: [0, 0, 0] # blackbuoy...black
+#         6: [150, 240, 80] # greenbuoy...lightgreen
+#         7: [255, 128, 0] # orangebuoy...orange
+#         8: [255, 255, 255] # whitebuoy...white
+
+rviz_colors: # rgb, YOLO seg
+        0: [220, 220, 220]    # background...lightgray
+        1: [255, 30, 30]      # red cone...red
+        2: [40, 40, 40]       # black cone...darkgray
+        3: [150, 240, 80]     # green cone...lightgreen
+        4: [255, 255, 255]    # white cone...white
+        5: [0, 0, 0]          # black sphere...black
+        6: [255, 128, 0]      # orange sphere...orange
+        7: [30, 60, 150]      # water...dark-blue
+        8: [160, 160, 160]    # dock...gray
+        9: [0, 102, 0]        # land...darkgreen
 
 # ConvBKI parameters
 ConvBKI:
@@ -55,50 +83,39 @@ ConvBKI:
   f: 5                 # 5
   publish_map: True    # map publish flag
 
-
   # Segmentation Net
   res: 0.25 #0.2
   cr: 0.5
 
+# Occupancy Grid Map parameters
+OGM_builder:
+  grid_resolution: 0.1              # for tracking accuracy, ConvBKI grid is 0.8 for now, need to tune
+  grid_width: 1000
+  grid_height: 1000
+  no_perception: False              # true for no percetpion mode
+  free_space_id: [7]                # water is free space
+  unknown_id: [0]                   # background is still unknown
 
-  # rviz color
-  # colors: # rgb, grounded_sam2
-  #         0: [200, 275, 200] # tree...very light green
-  #         1: [0, 102, 0] # grass-shore...darkgreen
-  #         2: [160, 160, 160] # concrete_platform...gray
-  #         3: [30, 60, 150] # water...dark-blue
-  #         4: [255, 30, 30] # redbuoy...red
-  #         5: [0, 0, 0] # blackbuoy...black
-  #         6: [150, 240, 80] # greenbuoy...lightgreen
-  #         7: [255, 128, 0] # orangebuoy...orange
-  #         8: [255, 255, 255] # whitebuoy...white
-
-  colors: # rgb, YOLO seg
-          0: [220, 220, 220]    # background...lightgray
-          1: [255, 30, 30]      # red cone...red
-          2: [40, 40, 40]       # black cone...darkgray
-          3: [150, 240, 80]     # green cone...lightgreen
-          4: [255, 255, 255]    # white cone...white
-          5: [0, 0, 0]          # black sphere...black
-          6: [255, 128, 0]      # orange sphere...orange
-          7: [30, 60, 150]      # water...dark-blue
-          8: [160, 160, 160]    # dock...gray
-          9: [0, 102, 0]        # land...darkgreen
-
+# Object SLAM parameters
 Obj_SLAM:
+  landmark_ids: [1, 2, 3, 4, 5, 6]  # landmarks detection array
+  promote_hits: 3                   # when to promote
 
   drift_bridge:
     # Timing Gates (ms)
-    backtrack_tol_ms: 5.0         # tolerate small backtracks/dupes
-    min_dt_floor_ms: 5.0          # ignore micro-bursts
-    dt_thresh_ms: 50.0            # time-based KF fallback if no motion
+    backtrack_tol_ms: 5.0           # tolerate small backtracks/dupes
+    min_dt_floor_ms: 5.0            # ignore micro-bursts
+    dt_thresh_ms: 50.0              # time-based KF fallback if no motion
 
     # Motion Thresholds
-    trans_thresh_m: 0.20          # (meter)
-    yaw_thresh_deg: 5.0           # (degree)
+    trans_thresh_m: 0.20            # (meter)
+    yaw_thresh_deg: 5.0             # (degree)
   
   lm_tracker:
-    drop_seconds: 1.5             # when to declare as LOST
-    promote_hits: 3               # when to promote
-    promote_window: 5             # time window for promotion
-    min_score: 0.0                # min detection score
+    drop_seconds: 1.5               # when to declare as LOST
+    promote_window: 5               # time window for promotion
+    min_score: 0.0                  # min detection score
+  
+  gtsam_optimizer:
+    robust_loss: ""                 # None, Huber, Cauchy
+    relin_thresh: 0.1               # relinearize threshold

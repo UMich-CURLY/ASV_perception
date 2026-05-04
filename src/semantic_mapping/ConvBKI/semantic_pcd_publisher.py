@@ -26,19 +26,9 @@ class MapPublisher(Node):
         self.get_logger().info("Initializing the node!")
         self.bridge = CvBridge()
 
-        # self.fixed_class_id_mapping = {
-        #     "tree": 0,
-        #     "grass - shore": 1,
-        #     "concreteplatform": 2,
-        #     "water": 3,
-        #     "redbuoy": 4,
-        #     "blackbuoy": 5,
-        #     "greenbuoy": 6,
-        #     "orangebuoy": 7,
-        #     "whitebuoy": 8,
-        # }
         self.num_classes = model_params["num_classes"]
         self.ros_topic = model_params["ros_parameters"]
+        self.world_frame = model_params["ros_parameters"]["global_frame"]
 
         # Publishers
         self.overlay_pub = self.create_publisher(Image, self.ros_topic["overlay_topic"], 10)
@@ -66,9 +56,9 @@ class MapPublisher(Node):
         self.ts.registerCallback(self.callback)
 
         # Other initialization
-        self.voxel_sizes=model_params["ConvBKI"]["voxel_sizes"]
-        self.color=model_params["ConvBKI"]["colors"]
-        self.publish_map=model_params["ConvBKI"]["publish_map"]
+        self.voxel_sizes = model_params["ConvBKI"]["voxel_sizes"]
+        self.color = model_params["rviz_colors"]
+        self.publish_map = model_params["ConvBKI"]["publish_map"]
         self.lidar = None
         self.seg_input = None
         self.inv = None
@@ -113,7 +103,7 @@ class MapPublisher(Node):
         # Create PointCloud2 message
         pc2_msg = PointCloud2()
         pc2_msg.header.stamp = self.get_clock().now().to_msg()
-        pc2_msg.header.frame_id = "map"
+        pc2_msg.header.frame_id = self.world_frame
 
         # Define PointCloud2 fields
         pc2_msg.fields = [
@@ -266,7 +256,7 @@ class MapPublisher(Node):
                 # Create PointCloud2 message
                 pc2_msg = PointCloud2()
                 pc2_msg.header.stamp = filt_pcd_msg.header.stamp
-                pc2_msg.header.frame_id = "map"  
+                pc2_msg.header.frame_id = self.world_frame
 
                 # Define PointCloud2 fields
                 pc2_msg.fields = [

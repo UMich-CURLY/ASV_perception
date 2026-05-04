@@ -37,11 +37,13 @@ class OccupancyGridBuilder(Node):
         # Load model parameters
         with open(config_path, "r") as stream:
             try:
-                model_params = yaml.safe_load(stream)
+                self.configs = yaml.safe_load(stream)
             except yaml.YAMLError as exc:
                 print(exc)
 
-        self.ros_topic = model_params["ros_parameters"]
+        self.ros_topic = self.configs["ros_parameters"]
+        self.ogm_params = self.configs["OGM_builder"]
+        self.rviz_colors = self.configs["rviz_colors"]
 
         self._setup_parameters()
         self._setup_tf()
@@ -50,17 +52,11 @@ class OccupancyGridBuilder(Node):
         self._configure_free_space_mode()
 
     def _setup_parameters(self):
-        """Initialize all ROS parameters with defaults."""
-        # self.declare_parameter('grid_resolution', 0.8)
-        self.declare_parameter('grid_resolution', 0.1)      # 10 cm resolution
-        self.declare_parameter('grid_width', 1000)
-        self.declare_parameter('grid_height', 1000)
-        self.declare_parameter('no_perception', True)   # true for no perception mode
-        
-        self.resolution = self.get_parameter('grid_resolution').value
-        self.grid_width = self.get_parameter('grid_width').value
-        self.grid_height = self.get_parameter('grid_height').value
-        self.free_space_mode = self.get_parameter('no_perception').value
+        """Initialize all OGM parameters with defaults."""
+        self.resolution = self.ogm_params["grid_resolution"]
+        self.grid_width = self.ogm_params["grid_width"]
+        self.grid_height = self.ogm_params["grid_height"]
+        self.free_space_mode = self.ogm_params["no_perception"]
 
     def _setup_tf(self):
         """Initialize transform buffer, listener, and broadcaster."""
@@ -195,17 +191,28 @@ class OccupancyGridBuilder(Node):
         colors = np.stack([red, green, blue], axis=1)
         
         # Color to semantic mapping
-        color_map = {
-            (200, 275, 200): 100,  # Vegetation -> Obstacle
-            (0, 102, 0): 100,      # Dark vegetation -> Obstacle
-            (160, 160, 160): 100,  # Structures -> Obstacle
-            (30, 60, 150): 0,      # Water -> Free space
-            (255, 30, 30): 100,    # Red objects -> Obstacle
-            (0, 0, 0): 100,        # Black objects -> Obstacle
-            (150, 240, 80): 100,   # Light vegetation -> Obstacle
-            (255, 128, 0): 100,    # Orange objects -> Obstacle
-            (255, 255, 255): 100   # White objects -> Obstacle
-        }
+        # color_map = {
+        #     (200, 275, 200): 100,  # Vegetation -> Obstacle
+        #     (0, 102, 0): 100,      # Dark vegetation -> Obstacle
+        #     (160, 160, 160): 100,  # Structures -> Obstacle
+        #     (30, 60, 150): 0,      # Water -> Free space
+        #     (255, 30, 30): 100,    # Red objects -> Obstacle
+        #     (0, 0, 0): 100,        # Black objects -> Obstacle
+        #     (150, 240, 80): 100,   # Light vegetation -> Obstacle
+        #     (255, 128, 0): 100,    # Orange objects -> Obstacle
+        #     (255, 255, 255): 100   # White objects -> Obstacle
+        # }
+        color_map = {}
+
+        for class_id, rgb in self.rviz_colors.items():
+            rgb_tuple = tuple(rgb)
+
+            if class_id == self.ogm_params["free_space_id"]:  # water
+                color_map[rgb_tuple] = 0
+            elif class_id == self.ogm_params["unknown_id"]:   # background
+                color_map[rgb_tuple] = -1  # keep as -1
+            else:
+                color_map[rgb_tuple] = 100
         labels = np.full(colors.shape[0], -1, dtype=np.int8)
         
         # Assign labels based on color matching
