@@ -35,7 +35,7 @@ setup(
             # Object SLAM
             'drift_bridge = object_slam.drift_bridge_node:main',
             'lm_track = object_slam.landmark_tracker:main',
-            # 'gtsam_backend = object_slam.gtsam_optimizer:main',
+            'gtsam_backend = object_slam.gtsam_optimizer:main',
         ],
     },
 )

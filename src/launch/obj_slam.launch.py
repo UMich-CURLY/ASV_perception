@@ -23,12 +23,12 @@ def generate_launch_description():
             cwd=src_dir,
             output='screen'
         ),
-        # ExecuteProcess(
-        #     cmd=[
-        #         'python3',
-        #         'object_slam/gtsam_optimizer.py',
-        #     ],
-        #     cwd=src_dir,
-        #     output='screen'
-        # ),
+        ExecuteProcess(
+            cmd=[
+                'python3',
+                'object_slam/gtsam_optimizer.py',
+            ],
+            cwd=src_dir,
+            output='screen'
+        ),
     ])
