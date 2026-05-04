@@ -11,6 +11,9 @@ Panels:
         - /MarkerArray1
         - /PointCloud21
         - /Image2
+        - /Map1
+        - /MarkerArray2
+        - /MarkerArray2/Topic1
       Splitter Ratio: 0.5
     Tree Height: 497
   - Class: rviz_common/Selection
@@ -30,7 +33,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: ""
+    SyncSource: PointCloud2
 Visualization Manager:
   Class: ""
   Displays:
@@ -195,6 +198,18 @@ Visualization Manager:
         Value: /convBKI/OGM_global_updates
       Use Timestamp: false
       Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: MarkerArray
+      Namespaces:
+        {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /convBKI/cluster_centroids
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -241,25 +256,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 96.68620300292969
+      Distance: 53.88361358642578
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 17.01308250427246
-        Y: -2.7659621238708496
-        Z: 14.471245765686035
+        X: 7.0565924644470215
+        Y: 5.605081081390381
+        Z: 6.985200881958008
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.5597963333129883
+      Pitch: 0.3397957682609558
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 2.740342617034912
+      Yaw: 3.478520631790161
     Saved: ~
 Window Geometry:
   Displays:

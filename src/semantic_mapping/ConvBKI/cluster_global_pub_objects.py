@@ -24,6 +24,7 @@ class PointCloudCluster(Node):
         
         self.ros_params = self.params["ros_parameters"]
         self.world_frame = self.ros_params["global_frame"]
+        self.rviz_colors = self.params["rviz_colors"]
 
         self.subscription = self.create_subscription(
             PointCloud2,
@@ -36,7 +37,13 @@ class PointCloudCluster(Node):
         self.eps = 1.15  # Distance threshold for clustering
         self.merge_threshold = 1.5  # Distance threshold to merge clusters
         self.min_samples = 4  # Minimum points to form a cluster
-        self.tracked_colors = {(255, 30, 30), (0, 0, 0), (150, 240, 80), (255, 128, 0), (255, 255, 255)}  # Tracked colors
+        
+        tracked_ids = [1, 2, 3, 4, 5, 6]
+        self.tracked_colors = {tuple(c) for c in self.rviz_colors.values()}
+        # self.tracked_colors = {
+        #     tuple(self.rviz_colors[i]) for i in tracked_ids
+        # }
+
         self.z_threshold = -1.4  # Ignore points below this z-value
 
     def pointcloud_callback(self, msg):
